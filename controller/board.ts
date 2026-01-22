@@ -15,29 +15,44 @@ router.get("/",async (req,res)=>{
 });
 
 //Add board
-router.post("/",async(req,res)=>{
-    try{
-        const { detail , did }= req.body;
-        if(!detail || !did){
-            return res.status(400).json({ message : "Context failed to send"});
-        };
-        const sql = 'INSERT INTO `board`( `detail`, `did`) VALUES (?,?)';
-        const [rows] = await conn.query<ResultSetHeader>(sql,[
-            detail,
-            did
-        ]); 
-        if(rows.affectedRows === 0){
-            return res.status(401).json({ message : "No data"})        
-        }
-        res.status(201).json({ 
-            message: "User created",
-            row : rows.affectedRows 
-        });
- 
-    }catch(err){
-        console.error(err);
-        res.status(500).send("Database error");
+// POST - เพิ่ม Board
+router.post("/", async (req, res) => {
+  try {
+    const { detail, did, harder } = req.body;
+    
+    // ✅ ตรวจสอบเฉพาะ detail และ harder (did สามารถเป็น null ได้)
+    if (!detail || !harder) {
+      return res.status(400).json({
+        message: "กรุณาระบุ detail และ harder",
+        received: req.body
+      });
     }
+
+    // ✅ ถ้า did เป็น null ให้ใส่ NULL ลง database
+    const sql = 'INSERT INTO `board` (`detail`, `did`, `harder`) VALUES (?, ?, ?)';
+    const [rows] = await conn.query<ResultSetHeader>(sql, [
+      detail,
+      did || null,  // ✅ ถ้าไม่มี did ให้เป็น null
+      harder
+    ]);
+
+    if (rows.affectedRows === 0) {
+      return res.status(500).json({ message: "Insert failed" });
+    }
+
+    res.status(201).json({
+      message: "Board created successfully",
+      bid: rows.insertId,
+      affectedRows: rows.affectedRows
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Database error",
+      error: err instanceof Error ? err.message : 'Unknown error'
+    });
+  }
 });
 
 router.get("/send", async (req, res) => {

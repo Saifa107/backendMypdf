@@ -29,6 +29,17 @@ router.get("/getAll", async (req,res)=>{
  }
 });
 
+router.get("/noBoard",async(req,res)=>{
+  try{
+    const sql = "SELECT d.* FROM document d LEFT JOIN board b ON d.did = b.did WHERE b.did IS NULL;";
+    const [rows] = await conn.query(sql);
+    res.json(rows);
+  }catch(err){
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
+
 router.get("/",async (req,res)=>{
     try{
         const [rows] = await conn.query("SELECT * FROM `board` ");
@@ -206,6 +217,7 @@ class uploadFile{
             limits:{
                 fileSize: 64 * 1024 * 1024, // 64 MByte
             },
+            
     });
 }
 
@@ -248,8 +260,16 @@ router.post("/upload", fileUpload.upload.single("file"), async (req, res) => {
       const url_file = projectId+'/'+filename;
       
       const semester = getCurrentSemester();
-
+      
       const name = req.file.originalname;
+      // ลองแปลง encoding ถ้าชื่อไฟล์เป็น latin1
+
+      let originalFileName = req.file.originalname;
+      try {
+        originalFileName = Buffer.from(originalFileName, 'latin1').toString('utf8');
+      } catch (e) {
+        console.log('Cannot decode filename, using original');
+      }
       console.log(req.file.originalname);
       console.log(filename);
       console.log(url_file); 
@@ -257,7 +277,7 @@ router.post("/upload", fileUpload.upload.single("file"), async (req, res) => {
       const sql = 'INSERT INTO `document` (`file_url`,`file_name`, `statue`, `semester`) VALUES (?,?,?,?);';
       const [rows] = await conn.query<ResultSetHeader>(sql,[
         url_file,
-        name,
+        originalFileName,
         "0",
         semester
       ]);
@@ -275,6 +295,92 @@ router.post("/upload", fileUpload.upload.single("file"), async (req, res) => {
       return res.status(err.response?.status || 500).json({
         message: "Upload failed",
         error: err.response?.data || err.message,
+      });
+    }
+  }
+);
+
+// upload + add board
+router.post("/upload-board", fileUpload.upload.single("file"), async (req, res) => {
+    try {
+      const { detail , headers } = req.body;
+
+      if (!req.file || !detail || !headers) {
+        return res.status(400).json({
+          message: "file หรือ detail หายไป"
+        });
+      }
+
+      /* ==========================
+         1. Upload ไป CDN
+      ========================== */
+      const projectId = "https://cdn.csmsu.net/extproj_mypdf";
+
+      const form = new FormData();
+      form.append("file", req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+      });
+
+      const cdnResponse = await axios.post(projectId, form, {
+        headers: {
+          ...form.getHeaders(),
+          accept: "application/json",
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
+
+      const filename = cdnResponse.data.filename;
+      const fileUrl = `${projectId}/${filename}`;
+
+      /* ==========================
+         2. แก้ encoding ชื่อไฟล์
+      ========================== */
+      let originalFileName = req.file.originalname;
+      try {
+        originalFileName = Buffer
+          .from(originalFileName, "latin1")
+          .toString("utf8");
+      } catch {}
+
+      const semester = getCurrentSemester();
+
+      /* ==========================
+         3. INSERT document
+      ========================== */
+      const [docResult] = await conn.query<ResultSetHeader>(
+        `INSERT INTO document (file_url, file_name, statue, semester)
+         VALUES (?, ?, ?, ?)`,
+        [fileUrl, originalFileName, "0", semester]
+      );
+
+      const did = docResult.insertId; // ⭐ สำคัญมาก
+
+      /* ==========================
+         4. INSERT board
+      ========================== */
+      const [boardResult] = await conn.query<ResultSetHeader>(
+        `INSERT INTO board (detail, did, harder)
+         VALUES (?, ?, ?)`,
+        [detail, did, headers]
+      );
+
+      /* ==========================
+         Response
+      ========================== */
+      res.status(201).json({
+        message: "Upload + Create Board success",
+        did,
+        boardId: boardResult.insertId,
+        file_url: fileUrl,
+      });
+
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({
+        message: "Upload board failed",
+        error: err.message
       });
     }
   }

@@ -85,6 +85,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({message : "Missing data"});
     }
     const user = rows[0];
+    //ไม่ show password //
     res.status(200).json(user);
   } catch (err) {
     console.error(err);
