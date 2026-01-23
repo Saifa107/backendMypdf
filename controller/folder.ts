@@ -104,3 +104,14 @@ router.post("/", async (req,res)=>{
     }
 });
 
+// ดึงหมวดหมู่ทั้งหมด
+router.get("/categories", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM category ORDER BY category_name";
+    const [rows] = await conn.query(sql);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});

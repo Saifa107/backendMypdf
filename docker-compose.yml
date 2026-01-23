@@ -1,13 +1,26 @@
-version: "3.9"
+version: "3.8"
 
 services:
   node-backend:
     container_name: mypdf-backend
+    
+    # สั่งให้ Build จากไฟล์ Dockerfile ใน Git
     build:
       context: .
       dockerfile: Dockerfile
+    
+    # ✅ Map Port 3000 ให้ตรงกับ server.ts
+    # (ซ้าย = Port ที่เราจะเรียกใช้จากข้างนอก, ขวา = Port ของแอพข้างใน)
     ports:
-      - "3001:3001"
+      - "3000:3000"
+    
     restart: unless-stopped
+    
+    # ✅ ตั้งค่าตัวแปร Environment
     environment:
-      PORT: 3001
+      - port=3000             # ต้องตัวเล็กให้ตรงกับ process.env.port ในโค้ด
+      - NODE_ENV=production   # บอกให้ทำงานโหมด Production (เร็วขึ้น)
+    
+    # (ทางเลือก) ถ้าอยากให้ไฟล์ใน uploads ไม่หายเวลาแก้โค้ดใหม่ ให้เอา # ออก
+    # volumes:
+    #   - ./uploads:/app/uploads
