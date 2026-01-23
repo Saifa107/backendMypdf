@@ -68,3 +68,22 @@ router.get("/send", async (req, res) => {
     res.status(500).send("Database error");
   }
 });
+
+//ลบ board
+router.delete("/:id", async(req,res)=>{
+  try{
+    const  id = req.params.id;
+    if(!id){
+       return res.status(400).json({ message : "Board ID not found"});
+    }
+    const sql = 'DELETE FROM `board` WHERE bid = ?';
+    const [rows] = await conn.query<ResultSetHeader>(sql,[id]);
+    res.status(201).json({
+      message: "Board delete successfully",
+      affectedRows: rows.affectedRows
+    })
+  }catch(err){
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
