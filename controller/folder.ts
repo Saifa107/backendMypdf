@@ -119,12 +119,12 @@ router.get("/", async (req, res) => {
 // ✅ ส่งเอกสารให้อาจารย์หลายคน พร้อมหมวดหมู่หลายหมวด
 router.post("/sendToTeachers", async (req, res) => {
   try {
-    const { document_id, teacher_ids, category_ids } = req.body;
+    const { document_id, teacher_ids, category_ids, text } = req.body;
 
-    console.log('Received data:', { document_id, teacher_ids, category_ids });
+    console.log('Received data:', { document_id, teacher_ids, category_ids, text });
 
     // ✅ Validation
-    if (!document_id || !teacher_ids || !Array.isArray(teacher_ids)) {
+    if (!document_id || !teacher_ids || !Array.isArray(teacher_ids) || !text) {
       return res.status(400).json({ 
         message: "document_id และ teacher_ids (array) จำเป็น",
         received: req.body
@@ -174,7 +174,7 @@ router.post("/sendToTeachers", async (req, res) => {
           VALUES (?, ?, ?)
         `;
         const [result] = await conn.query<ResultSetHeader>(sqlSend, [
-          "เอกสารจากระบบ",
+          text,
           teacherId,
           document_id
         ]);
