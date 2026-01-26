@@ -105,13 +105,126 @@ router.post("/", async (req,res)=>{
 });
 
 // ดึงหมวดหมู่ทั้งหมด
-router.get("/categories", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const sql = "SELECT * FROM category ORDER BY category_name";
+    const sql = "SELECT * FROM category ";
     const [rows] = await conn.query(sql);
     res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).send("Database error");
+  }
+});
+
+// ✅ ส่งเอกสารให้อาจารย์หลายคน พร้อมหมวดหมู่หลายหมวด
+router.post("/sendToTeachers", async (req, res) => {
+  try {
+    const { document_id, teacher_ids, category_ids } = req.body;
+
+    console.log('Received data:', { document_id, teacher_ids, category_ids });
+
+    // ✅ Validation
+    if (!document_id || !teacher_ids || !Array.isArray(teacher_ids)) {
+      return res.status(400).json({ 
+        message: "document_id และ teacher_ids (array) จำเป็น",
+        received: req.body
+      });
+    }
+
+    if (!category_ids || !Array.isArray(category_ids) || category_ids.length === 0) {
+      return res.status(400).json({ 
+        message: "กรุณาเลือกหมวดหมู่อย่างน้อย 1 หมวด",
+        received: req.body
+      });
+    }
+
+    if (teacher_ids.length === 0) {
+      return res.status(400).json({ 
+        message: "กรุณาเลือกอาจารย์อย่างน้อย 1 คน" 
+      });
+    }
+
+    try {
+      // ========================================
+      // 1️⃣ บันทึกหมวดหมู่ของเอกสาร
+      // ========================================
+      console.log('Step 1: Saving categories...');
+      
+      for (const categoryId of category_ids) {
+        const sqlCategory = `
+          INSERT INTO document_category (did, category_id)
+          VALUES (?, ?)
+          ON DUPLICATE KEY UPDATE category_id = category_id
+        `;
+        await conn.query(sqlCategory, [document_id, categoryId]);
+      }
+      
+      console.log(`✅ Saved ${category_ids.length} categories`);
+
+      // ========================================
+      // 2️⃣ ส่งเอกสารให้อาจารย์แต่ละคน
+      // ========================================
+      console.log('Step 2: Sending to teachers...');
+      
+      let successCount = 0;
+      
+      for (const teacherId of teacher_ids) {
+        const sqlSend = `
+          INSERT INTO doc_send (title, uid, did)
+          VALUES (?, ?, ?)
+        `;
+        const [result] = await conn.query<ResultSetHeader>(sqlSend, [
+          "เอกสารจากระบบ",
+          teacherId,
+          document_id
+        ]);
+        
+        if (result.affectedRows > 0) {
+          successCount++;
+        }
+      }
+      
+      console.log(`✅ Sent to ${successCount} teachers`);
+
+      // ========================================
+      // 3️⃣ อัพเดทสถานะเอกสารเป็น "ส่งแล้ว"
+      // ========================================
+      console.log('Step 3: Updating document status...');
+      
+      const sqlUpdateStatus = `
+        UPDATE document SET statue = '1' WHERE did = ?
+      `;
+      await conn.query(sqlUpdateStatus, [document_id]);
+      
+      console.log('✅ Status updated');
+
+      // ✅ Commit Transaction
+  
+
+      // ✅ Response สำเร็จ
+      res.status(200).json({
+        success: true,
+        message: "ส่งเอกสารสำเร็จ",
+        data: {
+          document_id: document_id,
+          teachers_sent: successCount,
+          categories_saved: category_ids.length,
+          teacher_ids: teacher_ids,
+          category_ids: category_ids
+        }
+      });
+
+    } catch (err) {
+      console.error('Transaction error:', err);
+      throw err;
+    }
+
+  } catch (err) {
+    console.error('Send to teachers error:', err);
+    res.status(500).json({
+      success: false,
+      message: "เกิดข้อผิดพลาดในการส่งเอกสาร",
+      error: err instanceof Error ? err.message : 'Unknown error'
+    });
   }
 });
