@@ -77,25 +77,46 @@ router.get("/getDoc/:id",async(req,res)=>{
 });
 
 //ลบเอกสาร
-router.delete("/:id",async(req,res)=>{
-    try{
-        const document_id = req.params.id;
-        if(!document_id){
-            return res.status(400).json({ message : "Document ID not found"});
-        }
-        const sql = "DELETE FROM document WHERE `did` = ?";
-        const [rows] = await conn.query<ResultSetHeader>(sql,[document_id]);
-        if(rows.affectedRows === 0){
-            return res.status(204).json({message : "Document not found"});
-        }
-        res.status(201).json({ 
-            massage : "Delete document ",
-            rows : rows.affectedRows
-        });
-    }catch(err){
-        console.error(err);
-        res.status(500).send("Database error");
+router.delete("/:id", async (req, res) => {
+  try {
+    const document_id = req.params.id;
+    if (!document_id) {
+      return res.status(400).json({ message: "Document ID not found" });
     }
+
+    // 1️⃣ ลบ doc_send
+    const [docSendResult] = await conn.query<ResultSetHeader>(
+      "DELETE FROM `doc_send` WHERE did = ?",
+      [document_id]
+    );
+
+    // 2️⃣ ลบ document_category
+    const [docCategoryResult] = await conn.query<ResultSetHeader>(
+      "DELETE FROM `document_category` WHERE did = ?",
+      [document_id]
+    );
+
+    // 3️⃣ ลบ document
+    const [docResult] = await conn.query<ResultSetHeader>(
+      "DELETE FROM `document` WHERE did = ?",
+      [document_id]
+    );
+
+    if (docResult.affectedRows === 0) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    res.status(200).json({
+      message: "Delete document success",
+      doc_send_deleted: docSendResult.affectedRows,
+      document_category_deleted: docCategoryResult.affectedRows,
+      document_deleted: docResult.affectedRows
+    });
+
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+    res.status(500).send("Database error");
+  }
 });
 
 //ปฏิทิน
