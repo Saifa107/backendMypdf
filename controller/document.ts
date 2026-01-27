@@ -147,7 +147,7 @@ router.post("/home/:uid",async(req,res)=>{
             return res.status(400).json({ message : "User ID failed to send"});
         }
 
-        const sql = "select document.did,document.file_url,doc_send.title,doc_send.create_at,doc_send.uid from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ?";
+        const sql = "select document.did,document.file_url,doc_send.title,doc_send.create_at,doc_send.uid,document.file_name from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ?";
         const [rows] = await conn.query(sql,[user_id]);
 
         res.status(201).json(rows);
