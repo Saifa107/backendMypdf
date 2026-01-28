@@ -139,7 +139,7 @@ router.post("/date",async(req,res)=>{
 });
 
 //แสดงเอกสารเพฉาะอาจาร์แต่ละคน
-router.post("/home/:uid",async(req,res)=>{
+router.get("/home/:uid",async(req,res)=>{
     try{
         const user_id  = req.params.uid;
 
@@ -158,7 +158,7 @@ router.post("/home/:uid",async(req,res)=>{
 });
 
 //แสดงเอกสารเพฉาะอาจาร์แต่ละคน + ช่วง 1 
-router.post("/term1/:id",async(req,res)=>{
+router.get("/term1/:id",async(req,res)=>{
     try{
         const user_id = req.params.id;
 
@@ -166,7 +166,7 @@ router.post("/term1/:id",async(req,res)=>{
             return res.status(400).json({ message : "User ID failed to send"});
         }
 
-        const sql  = "select document.did,document.file_url,document.semester,doc_send.title,doc_send.create_at,doc_send.uid from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ? AND document.semester LIKE '%-1';";
+        const sql  = "select document.did,document.file_url,document.semester,doc_send.title,doc_send.create_at,doc_send.uid,document.file_name from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ? AND document.semester LIKE '%-1';";
         const [rows] : any = await conn.query(sql,[user_id]);
 
         if(rows.length === 0){
@@ -183,13 +183,13 @@ router.post("/term1/:id",async(req,res)=>{
 });
 
 //แสดงเอกสารเพฉาะอาจาร์แต่ละคน + ช่วง 2
-router.post("/term2/:id",async(req,res)=>{
+router.get("/term2/:id",async(req,res)=>{
     try{
         const user_id = req.params.id;
         if(!user_id){
             return res.status(400).json({ message : "User ID failed to send"});
         }
-        const sql = "select document.did,document.file_url,document.semester,doc_send.title,doc_send.create_at,doc_send.uid from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ? AND document.semester LIKE '%-2';";
+        const sql = "select document.did,document.file_url,document.semester,doc_send.title,doc_send.create_at,doc_send.uid,document.file_name from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ? AND document.semester LIKE '%-2';";
         const [rows] : any = await conn.query(sql,[user_id]);
 
         if(rows.length === 0){
