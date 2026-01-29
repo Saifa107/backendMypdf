@@ -50,6 +50,103 @@ router.get("/",async (req,res)=>{
     }
 });
 
+//////////////////// quality //////////////////////
+////////////////////////////////////////////////////
+router.get("/quality", async (req, res) => {
+    try {
+        const sql = 'SELECT * FROM `quality`';
+        const [rows] = await conn.query(sql);
+        res.status(200).json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Database error");
+    }
+});
+
+// upload ลง quality
+router.post("/quality", async (req,res)=>{
+  try{
+    const {qid , did} = req.body;
+    if (!qid || !did) {
+      return res.status(400).json({
+        message: "กรุณาระบุ qid และ did",
+        received: req.body
+      });
+    }
+    const sql = 'INSERT INTO `quality_document` ( `qid`, `did`) VALUES ( ?, ?);';
+    const [rows] = await conn.query<ResultSetHeader>(sql, [
+      qid,
+      did
+    ]);
+    if (rows.affectedRows === 0) {
+      return res.status(500).json({ message: "Insert failed" });
+    }
+
+    res.status(201).json({
+      message: "Quality created successfully",
+      quality : rows.insertId,
+      affectedRows: rows.affectedRows
+    });
+  }catch(err){
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
+
+//สร้าง folder ประกันคุณภาพ
+router.post("/Addquality" , async(req,res)=>{
+  try{
+    const { name } = req.body;
+    if(!name){
+      return res.status(400).json({
+        message: "ไม่มีข้อมูลถูกส่งมา",
+      });
+    }
+    const sql = 'INSERT INTO `quality`( `q_name`) VALUES (?)';
+    const [rows] = await conn.query<ResultSetHeader>(sql,[
+      name
+    ]);
+    res.status(201).json({ message: "Quality created",row : rows.affectedRows });
+  }catch(err){
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
+
+//แสดง file ใน folder นั้นๆ
+router.get("/qualityFiles/:id", async (req, res) => {
+  try {
+    const qid = req.params.id; // รับค่า qid จาก URL
+
+    if (!qid) {
+      return res.status(400).json({ message: "Quality ID required" });
+    }
+
+    // SQL: เลือกข้อมูลจากตาราง document โดยเชื่อมกับ quality_document
+    // เงื่อนไขคือ quality_document.qid ต้องตรงกับที่ส่งมา
+    const sql = `
+      SELECT document.did, document.file_url, document.statue, document.semester, document.create_at, document.file_name
+      FROM document
+      INNER JOIN quality_document ON document.did = quality_document.did
+      WHERE quality_document.qid = ?
+    `;
+
+    const [rows] = await conn.query(sql, [qid]);
+
+    // ถ้าไม่มีข้อมูล ส่ง array ว่างกลับไป (200 OK)
+    res.status(200).json(rows);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
+
+
+
+
+
+
 //หาเฉพาะเอกสารนั้นๆ 
 router.get("/getDoc/:id",async(req,res)=>{
     try{
@@ -506,4 +603,4 @@ router.post("/docSend/:id", async (req, res) => {
 });
 
 
- 
+
