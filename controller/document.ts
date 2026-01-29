@@ -29,12 +29,22 @@ router.get("/getAll", async (req,res)=>{
  }
 });
 
-router.get("/noBoard",async(req,res)=>{
-  try{
-    const sql = "SELECT d.* FROM document d LEFT JOIN board b ON d.did = b.did WHERE b.did IS NULL;";
+router.get("/noBoard", async (req, res) => {
+  try {
+    // แก้ไข SQL: Join ทั้ง board และ quality_document
+    // แล้วเลือกเฉพาะแถวที่หาไม่เจอในทั้ง 2 ตาราง (IS NULL ทั้งคู่)
+    const sql = `
+      SELECT d.* FROM document d
+      LEFT JOIN board b ON d.did = b.did
+      LEFT JOIN quality_document q ON d.did = q.did
+      WHERE b.did IS NULL 
+      AND q.did IS NULL;
+    `;
+    
     const [rows] = await conn.query(sql);
     res.json(rows);
-  }catch(err){
+    
+  } catch (err) {
     console.error(err);
     res.status(500).send("Database error");
   }
