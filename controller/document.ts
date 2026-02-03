@@ -245,6 +245,81 @@ router.post("/date",async(req,res)=>{
     }
 });
 
+// ดึง Title จากตาราง doc_send โดยใช้ did (เอามาแค่ 1 ตัว)
+router.get("/getDocTitle/:id", async (req, res) => {
+  try {
+    const did = req.params.id;
+
+    if (!did) {
+      return res.status(400).json({ message: "File ID is required" });
+    }
+
+    // SQL: เลือก title จาก doc_send ที่ did ตรงกัน
+    // LIMIT 1 = เอามาแค่แถวเดียว (เพราะ title มักจะเหมือนกันถ้าเป็นไฟล์เดียวกัน หรือเอาตัวแรกที่เจอ)
+    const sql = "SELECT title FROM doc_send WHERE did = ? LIMIT 1";
+    
+    // หรือถ้าต้องการค่าที่ไม่ซ้ำจริงๆ ในกรณีที่มีหลาย Title ให้ใช้ DISTINCT
+    // const sql = "SELECT DISTINCT title FROM doc_send WHERE did = ? LIMIT 1";
+
+    const [rows]: any = await conn.query(sql, [did]);
+
+    if (rows.length > 0) {
+      res.status(200).json({ title: rows[0].title });
+    } else {
+      // กรณีไม่เคยถูกส่ง (ไม่มีใน doc_send) ให้ส่งค่าว่างหรือ null กลับไป
+      res.status(200).json({ title: null }); 
+    }
+
+  } catch (err) {
+    console.error("Error getting doc title:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// ดึงรายละเอียดการส่งเอกสาร (Title, Teachers, Categories) จาก did
+router.get("/getSendDetails/:did", async (req, res) => {
+  try {
+    const did = req.params.did;
+    if (!did) {
+      return res.status(400).json({ message: "Document ID is required" });
+    }
+
+    // 1. หา Title (หัวข้อ) จาก doc_send (เอาแค่ 1 ตัว เพราะทุก row ของ did เดียวกัน title จะเหมือนกัน)
+    const sqlTitle = "SELECT title FROM doc_send WHERE did = ? LIMIT 1";
+    
+    // 2. หา Teacher IDs (uid) ที่ถูกส่งไป
+    const sqlTeachers = "SELECT uid FROM doc_send WHERE did = ?";
+
+    // 3. หา Category IDs ที่ถูกเลือก
+    const sqlCategories = "SELECT category_id FROM document_category WHERE did = ?";
+
+    // รัน Query พร้อมกันด้วย Promise.all เพื่อความเร็ว
+    const [titleRows, teacherRows, categoryRows] : any = await Promise.all([
+      conn.query(sqlTitle, [did]),
+      conn.query(sqlTeachers, [did]),
+      conn.query(sqlCategories, [did])
+    ]);
+
+    // จัดรูปแบบข้อมูลก่อนส่งกลับ
+    const responseData = {
+      // ถ้าไม่มี title (ยังไม่เคยส่ง) ให้เป็นค่าว่าง
+      title: titleRows[0].length > 0 ? titleRows[0][0].title : "", 
+      
+      // แปลงจาก Array of Objects [{uid: 1}, {uid: 2}] -> Array of Numbers [1, 2]
+      teacher_ids: teacherRows[0].map((row: any) => row.uid),
+      
+      // แปลงจาก Array of Objects [{category_id: 1}] -> Array of Numbers [1]
+      category_ids: categoryRows[0].map((row: any) => row.category_id)
+    };
+
+    res.status(200).json(responseData);
+
+  } catch (err) {
+    console.error("Error getting send details:", err);
+    res.status(500).send("Database error");
+  }
+});
+
 //แสดงเอกสารเพฉาะอาจาร์แต่ละคน
 router.get("/home/:uid",async(req,res)=>{
     try{
