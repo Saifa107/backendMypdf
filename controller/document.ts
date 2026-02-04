@@ -38,7 +38,8 @@ router.get("/noBoard", async (req, res) => {
       LEFT JOIN board b ON d.did = b.did
       LEFT JOIN quality_document q ON d.did = q.did
       WHERE b.did IS NULL 
-      AND q.did IS NULL;
+      AND q.did IS NULL
+      ORDER BY d.create_at DESC;
     `;
     
     const [rows] = await conn.query(sql);
@@ -329,7 +330,13 @@ router.get("/home/:uid",async(req,res)=>{
             return res.status(400).json({ message : "User ID failed to send"});
         }
 
-        const sql = "select document.did,document.file_url,doc_send.title,doc_send.create_at,doc_send.uid,document.file_name from document inner join doc_send ON document.did = doc_send.did WHERE doc_send.uid = ?";
+        const sql = `
+            SELECT document.did, document.file_url, doc_send.title, doc_send.create_at, doc_send.uid, document.file_name 
+            FROM document 
+            INNER JOIN doc_send ON document.did = doc_send.did 
+            WHERE doc_send.uid = ? 
+            ORDER BY doc_send.create_at DESC
+        `;
         const [rows] = await conn.query(sql,[user_id]);
 
         res.status(201).json(rows);
@@ -687,5 +694,72 @@ router.post("/docSend/:id", async (req, res) => {
   }
 });
 
+//ลบประกันคุณภาพ
+router.delete("/quality/:id", async (req,res)=>{
+  try{  
+    const qid  = req.params.id;
+    if(!qid){
+      return res.status(400).json({ message: "qid missing" });
+    }
+    const quality_document = 'DELETE FROM quality_document WHERE qid = ?';
+    await conn.query(quality_document,[
+      qid
+    ]);
+    const quality = 'DELETE FROM `quality` WHERE qid = ?';
+    await conn.query(quality,[
+      qid
+    ]);
+    res.status(200).json({ message: "Folder deleted" });
+  }catch(err){
+    console.error(err);
+    res.status(500).send("Datadase error");
+  }
+});
 
+// API ลบไฟล์ออกจากโฟลเดอร์ (Delete file from specific folder)
+router.delete("/qualityFile/:did", async (req, res) => {
+  try {
+    const { did } = req.params;
+    const sql = "DELETE FROM quality_document WHERE did = ?";
+    await conn.query(sql, [did]);
+    res.status(200).json({ message: "File removed from folder" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error removing file");
+  }
+});
 
+// ดึงเอกสารที่ถูกส่งมาหา User (เช็คจาก doc_send)
+router.get("/received/:uid", async (req, res) => {
+  try {
+    const uid = req.params.uid;
+
+    if (!uid) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // SQL: เลือกข้อมูลจาก document โดย Join กับ doc_send
+    // เพื่อหาว่า User คนนี้ (doc_send.uid) ได้รับไฟล์ไหนบ้าง
+    const sql = `
+      SELECT 
+        d.did,
+        d.file_url,
+        d.statue,      -- สถานะ (0 หรือ 1)
+        d.semester,    -- เทอม
+        d.file_name,
+        ds.create_at   -- วันที่ถูกส่ง (เอามาจาก doc_send)
+      FROM doc_send ds
+      INNER JOIN document d ON ds.did = d.did
+      WHERE ds.uid = ?
+      ORDER BY ds.create_at DESC; -- เรียงจากล่าสุด
+    `;
+
+    const [rows] = await conn.query(sql, [uid]);
+
+    res.status(200).json(rows);
+
+  } catch (err) {
+    console.error("Error fetching received documents:", err);
+    res.status(500).send("Database error");
+  }
+});

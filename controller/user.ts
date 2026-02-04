@@ -98,7 +98,16 @@ router.post("/add", async(req,res)=>{
   try{
     const user : user_model = req.body;
     
-    console.log(user);
+
+    // ✅ 1. เพิ่มขั้นตอนการเช็ค Email ซ้ำ
+    const checkSql = "SELECT uid FROM user WHERE email = ?";
+    const [existingUsers] = await conn.query(checkSql, [user.email]);
+
+    // ถ้า array ไม่ว่าง แปลว่ามี email นี้แล้ว
+    if ((existingUsers as any[]).length > 0) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+    
     const sql =`INSERT INTO user (username, email, password, phone, type) VALUES (?,?,?,?,'user')
     `;
     const [rows] = await conn.query<ResultSetHeader>(

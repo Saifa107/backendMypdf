@@ -69,6 +69,7 @@ router.get("/:id", async (req,res)=>{
         res.status(500).send("Database error");
     }
 });
+
 //add ประเภทของ forlder
 router.post("/", async (req,res)=>{
     try{
@@ -228,3 +229,5 @@ router.post("/sendToTeachers", async (req, res) => {
     });
   }
 });
+
+//delete
