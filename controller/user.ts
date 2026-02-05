@@ -108,7 +108,7 @@ router.post("/add", async(req,res)=>{
       return res.status(409).json({ message: "Email already exists" });
     }
     
-    const sql =`INSERT INTO user (username, email, password, phone, type) VALUES (?,?,?,?,'user')
+    const sql =`INSERT INTO user (username, email, password, phone, type) VALUES (?,?,?,?,?)
     `;
     const [rows] = await conn.query<ResultSetHeader>(
           sql,
@@ -116,6 +116,7 @@ router.post("/add", async(req,res)=>{
            user.email,
            user.password,
            user.phone,
+           user.type
     ]);
 
     res.status(201).json({ message: "User created",row : rows.affectedRows });
