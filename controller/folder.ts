@@ -117,6 +117,9 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+
+
 // ✅ ส่งเอกสารให้อาจารย์หลายคน พร้อมหมวดหมู่หลายหมวด
 router.post("/sendToTeachers", async (req, res) => {
   try {
@@ -168,16 +171,19 @@ router.post("/sendToTeachers", async (req, res) => {
       console.log('Step 2: Sending to teachers...');
       
       let successCount = 0;
-      
+      //เลข id สำหรับการใช้ปฏิทิน
+      const batchId = Date.now().toString() + '-' + Math.floor(Math.random() * 1000);
+
       for (const teacherId of teacher_ids) {
         const sqlSend = `
-          INSERT INTO doc_send (title, uid, did)
-          VALUES (?, ?, ?)
+          INSERT INTO doc_send (title, uid, did, batch_id)
+          VALUES (?, ?, ?, ?)
         `;
         const [result] = await conn.query<ResultSetHeader>(sqlSend, [
           text,
           teacherId,
-          document_id
+          document_id,
+          batchId
         ]);
         
         if (result.affectedRows > 0) {

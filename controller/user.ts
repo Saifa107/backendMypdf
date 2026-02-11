@@ -108,7 +108,7 @@ router.post("/add", async(req,res)=>{
       return res.status(409).json({ message: "Email already exists" });
     }
     
-    const sql =`INSERT INTO user (username, email, password, phone, type) VALUES (?,?,?,?,?)
+    const sql =`INSERT INTO user (username, email, password, phone, type, status) VALUES (?,?,?,?,?,1)
     `;
     const [rows] = await conn.query<ResultSetHeader>(
           sql,
@@ -196,6 +196,47 @@ router.delete("/delete/:id", async(req,res)=>{
       affectedRows: rows.affectedRows
     });
   }catch(err){
+    console.error(err);
+    res.status(500).send("Database error");
+  }
+});
+
+//เปลี่ยนสถาะ user
+router.put("/change-status", async (req, res) => {
+  try {
+    const { uid } = req.body; // รับ uid ที่ต้องการเปลี่ยน
+
+    if (!uid) {
+      return res.status(400).json({ message: "UID is required" });
+    }
+
+    // เพิ่มเงื่อนไข WHERE status = '1' ด้วยถ้าต้องการให้เปลี่ยนเฉพาะคนที่เป็น 1 เท่านั้น
+    const sql = `
+      UPDATE user 
+      SET status = '0' 
+      WHERE uid = ?
+    `;
+
+    const [result] = await conn.query(sql, [uid]);
+
+    if ((result as any).affectedRows === 0) {
+      return res.status(404).json({ message: "ไม่พบ User หรือ Status ไม่ได้เปลี่ยนแปลง" });
+    }
+
+    res.status(200).json({ message: "เปลี่ยน Status เป็น 0 สำเร็จ" });
+
+  } catch (err) {
+    console.error("Update status error:", err);
+    res.status(500).json({ message: "Database error", error: err });
+  }
+});
+
+//แสดง user ที่ Status เป็น 0 
+router.get("/status", async (req, res) => {
+  try {
+    const [rows] = await conn.query("SELECT * FROM `user` WHERE status = 0");
+    res.json(rows);
+  } catch (err) {
     console.error(err);
     res.status(500).send("Database error");
   }

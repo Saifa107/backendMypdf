@@ -763,3 +763,36 @@ router.get("/received/:uid", async (req, res) => {
     res.status(500).send("Database error");
   }
 });
+
+router.get("/calendar/events", async (req, res) => {
+  try {
+    // SQL: ดึงข้อมูลการส่งเอกสาร โดยยุบรวมกลุ่มด้วย batch_id
+    // เพื่อให้การส่ง 1 ครั้ง (หาหลายคน) แสดงเป็น 1 จุดบนปฏิทิน
+    const sql = `
+      SELECT 
+        d.did,
+        d.file_name,
+        d.file_url,
+        d.semester,
+        d.statue,
+        ds.title,
+        ds.create_at
+      FROM doc_send ds
+      INNER JOIN document d ON ds.did = d.did
+      GROUP BY ds.batch_id
+      ORDER BY ds.create_at DESC
+    `;
+
+    const [rows] = await conn.query(sql);
+
+    // ส่งข้อมูลกลับไปให้ Frontend
+    res.status(200).json(rows);
+
+  } catch (err) {
+    console.error("Error fetching calendar events:", err);
+    res.status(500).json({ 
+      message: "เกิดข้อผิดพลาดในการดึงข้อมูลปฏิทิน", 
+      error: err 
+    });
+  }
+});
