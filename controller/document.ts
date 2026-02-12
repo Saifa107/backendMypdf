@@ -770,17 +770,17 @@ router.get("/calendar/events", async (req, res) => {
     // เพื่อให้การส่ง 1 ครั้ง (หาหลายคน) แสดงเป็น 1 จุดบนปฏิทิน
     const sql = `
       SELECT 
-        d.did,
-        d.file_name,
-        d.file_url,
-        d.semester,
-        d.statue,
-        ds.title,
-        ds.create_at
-      FROM doc_send ds
-      INNER JOIN document d ON ds.did = d.did
-      GROUP BY ds.batch_id
-      ORDER BY ds.create_at DESC
+    ANY_VALUE(d.did) AS did,
+    ANY_VALUE(d.file_name) AS file_name,
+    ANY_VALUE(d.file_url) AS file_url,
+    ANY_VALUE(d.semester) AS semester,
+    ANY_VALUE(d.statue) AS statue,
+    ANY_VALUE(ds.title) AS title,
+    MAX(ds.create_at) AS create_at  
+FROM doc_send ds
+INNER JOIN document d ON ds.did = d.did
+GROUP BY ds.batch_id
+ORDER BY create_at DESC;
     `;
 
     const [rows] = await conn.query(sql);
