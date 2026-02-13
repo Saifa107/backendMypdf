@@ -65,28 +65,43 @@ router.get("/user_id/:id",async(req,res)=>{
 // ล็อกอินแยกระหว่าง user และ admin
 router.post("/login", async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier คือ email หรือ username
+    const { identifier, password } = req.body;
+    
+    console.log("1. Login Attempt:", { identifier, password }); // Log ดูค่าที่รับมา
 
-    if(!identifier || !password ){
-      return res.status(400).json({message : "Missing credentials"});
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Missing credentials" });
     }
 
-    const sql = `
-     SELECT * FROM user 
-      WHERE (email = ? OR username = ?)
-        AND password = ?
-    `;
-    const [rows]  = await conn.query<RowDataPacket[] & user_model[]>(
-      sql,
-      [identifier, identifier, password]
-    );
+    // ✅ ขั้นตอนที่ 1: ค้นหา User จาก Email หรือ Username ก่อน (ยังไม่เช็ค Password)
+    const sql = `SELECT * FROM user WHERE email = ? OR username = ?`;
+    const [rows] : any = await conn.query(sql, [identifier, identifier]);
 
-    if(rows.length===0){
-      return res.status(401).json({message : "Missing data"});
+    // ถ้าหาไม่เจอเลย
+    if (rows.length === 0) {
+      console.log("❌ User not found in DB");
+      return res.status(401).json({ message: "User not found" });
     }
+
     const user = rows[0];
-    //ไม่ show password //
+    console.log("2. User found in DB:", user); // Log ดูข้อมูลจริงใน DB (ระวังอย่าทำใน Production)
+
+    // ✅ ขั้นตอนที่ 2: เปรียบเทียบรหัสผ่านที่ Database กับที่ส่งมา
+    // (ตอนนี้เปรียบเทียบตรงๆ ถ้าอนาคตใช้ bcrypt ต้องแก้ตรงนี้)
+    if (user.password !== password) {
+      console.log(`❌ Password mismatch! DB: '${user.password}' vs Input: '${password}'`);
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // ✅ ขั้นตอนที่ 3: ตรวจสอบ Status (ตามที่คุณเคยขอไว้)
+    if (String(user.status) === '0') {
+       return res.status(403).json({ message: "Account disabled" });
+    }
+
+    // ผ่านทุกด่าน
+    console.log("✅ Login Success");
     res.status(200).json(user);
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Database error");
