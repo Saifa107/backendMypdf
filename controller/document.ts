@@ -14,9 +14,9 @@ export const queryAsync = util.promisify(conn.query).bind(conn);
 export const router = express.Router();
 
 
-// router.get("/",(req,res)=>{
-//     res.send("Get in document.ts");
-// });
+router.get("/test",(req,res)=>{
+    res.send("Get in document.ts");
+});
 
 router.get("/getAll", async (req,res)=>{
  try{
