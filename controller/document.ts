@@ -14,9 +14,7 @@ export const queryAsync = util.promisify(conn.query).bind(conn);
 export const router = express.Router();
 
 
-router.get("/test",(req,res)=>{
-    res.send("Get in document.ts");
-});
+
 
 router.get("/getAll", async (req,res)=>{
  try{
@@ -152,11 +150,6 @@ router.get("/qualityFiles/:id", async (req, res) => {
     res.status(500).send("Database error");
   }
 });
-
-
-
-
-
 
 //หาเฉพาะเอกสารนั้นๆ 
 router.get("/getDoc/:id",async(req,res)=>{
