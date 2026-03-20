@@ -21,9 +21,12 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 
+
+app.get('/ping', (req, res) => {
+  res.status(200).send('Backend is awake!');
+});
+
 app.use("/", user);
-
-
 app.use("/document", document);
 app.use("/board", board);
 app.use("/folder",folder);
