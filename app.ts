@@ -32,27 +32,11 @@ app.use("/board", board);
 app.use("/folder",folder);
 app.use("/uploads", express.static("uploads"));
 
-// หา IP ของเครื่อง
-function getLocalIP(): string {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]!) {
-      if (iface.family === "IPv4" && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return "localhost";
-}
+// ให้ดึง PORT จากระบบของ Render ก่อน ถ้าไม่มีค่อยใช้ 3000 สำหรับรันในเครื่อง
+const PORT = process.env.PORT || 3000;
 
-const localIP = getLocalIP();
-
-const PORT = 3000;
-
-//คำสั่งรันserver npx nodemon server.ts
-
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`Server running at http://${localIP}:${PORT}/`);
-  console.log(`Login route: http://localhost:${PORT}/`);
-  console.log(`Register route: http://localhost:${PORT}/register`);
+// ✅ ลบ '127.0.0.1' ออก เพื่อให้ Render (และโลกภายนอก) เข้าถึง Backend คุณได้
+app.listen(PORT, () => {
+  console.log(`Server running at port ${PORT}`);
+  console.log(`Test Ping: http://localhost:${PORT}/ping`);
 });
